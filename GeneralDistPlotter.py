@@ -12,10 +12,13 @@ parser.add_option("-n", "--normed", action="store_true", dest="norm", default=Fa
 parser.add_option("-v", "--variables", action="store", dest="vars", default=["ZPRIMEM"], help="[LepPt,METPt, TAGPt, TPRIMEM, WPt, lepJetPt, TRPIMEM, ZPRIMEM]")
 parser.add_option("--all", action="store_true", dest="all", default=False, help="[LepPt,METPt, TAGPt, TPRIMEM, WPt, lepJetPt, TRPIMEM, ZPRIMEM]")
 (options, args) = parser.parse_args()
-if options.all == True: options.vars = ["LepPt", "METPt", "TAGPt", "TPRIMEM", "WPt", "lepJetPt", "TPRIMEM", "ZPRIMEM"]
+if options.all == True: options.vars = ["LepPt", "METPt", "TAGPt", "WPt", "lepJetPt", "TPRIMEM", "ZPRIMEM"]
 
-def varplot(varname, xmin, xmax, pwd="/home/storage/andrzejnovak/March/", cut= "(LepPt<50.)", normed=False, stacked=False):
-	
+def varplot(varname, xmin=None, xmax=None, pwd="/home/storage/andrzejnovak/March/", cut= "(LepPt<50.)", normed=False, stacked=False):
+	if xmax is None:
+		tosize = TFile("root://cmsxrootd.fnal.gov/"+pwd+"SM.root")
+		xmax, xmin = tosize.Get("tree_T1").GetMaximum(varname)*0.4, tosize.Get("tree_T1").GetMinimum(varname)
+
 	VAR = [varname, 50, xmin, xmax]
 	YT = "events / "+str((VAR[3]-VAR[2])/VAR[1])+" GeV"
 	XT = varname+" (GeV)"
@@ -34,18 +37,21 @@ def varplot(varname, xmin, xmax, pwd="/home/storage/andrzejnovak/March/", cut= "
 	quickplot(pwd+"SE.root", treename, Data, VAR[0], Cut, "(1.0)")
 	quickplot(pwd+"SM.root", treename, Data, VAR[0], Cut, "(1.0)")
 
+
 	W = TH1F("W", "", VAR[1], VAR[2], VAR[3])
 	W.SetLineColor(kGreen-6)
 	W.SetLineWidth(2)
-	quickplot("/home/storage/andrzejnovak/March/WJetsToQQ.root", treename, W, VAR[0], Cut, "("+lumi+"*weight)")
-	for w in ["100To200", "200To400", "400To600", "600To800", "800To1200", "1200To2500", "2500ToInf"]:
+	quickplot(pwd+"WJetsToQQ.root", treename, W, VAR[0], Cut, "("+lumi+"*weight)")
+	#for w in ["100To200", "200To400", "400To600", "600To800", "800To1200", "1200To2500", "2500ToInf"]:
+	for w in ["200To400", "400To600", "600To800"]:
 		quickplot(pwd+"WJetsToLNu_HT-"+w+".root", treename, W, VAR[0], Cut, "("+lumi+"*weight)")
 
 
 	QCD = TH1F("QCD", "", VAR[1], VAR[2], VAR[3])
 	QCD.SetLineColor(kYellow)
 	QCD.SetLineWidth(2)
-	for q in ["300to500", "500to700", "700to1000", "1000to1500", "1500to2000", "2000toInf"]:
+	#for q in ["300to500", "500to700", "700to1000", "1000to1500", "1500to2000", "2000toInf"]:
+	for q in ["300to500", "500to700", "700to1000", "1500to2000", "2000toInf"]:
 		quickplot(pwd+"QCD_HT"+q+".root", treename, QCD, VAR[0], Cut, "("+lumi+"*weight)")
 
 	TT = TH1F("TT", "", VAR[1], VAR[2], VAR[3])
@@ -98,7 +104,7 @@ def varplot(varname, xmin, xmax, pwd="/home/storage/andrzejnovak/March/", cut= "
 	Data.GetXaxis().SetTitleOffset(1.06)
 	Data.GetYaxis().SetTitleOffset(1.06)
 
-	leg = TLegend(0.6,0.6,0.89,0.89)
+	leg = TLegend(0.65,0.6,0.89,0.89)
 	leg.SetHeader(H)
 	leg.SetFillColor(0)
 	leg.SetLineColor(0)
@@ -141,13 +147,15 @@ def varplot(varname, xmin, xmax, pwd="/home/storage/andrzejnovak/March/", cut= "
 	CUTLABL.DrawLatex(0.135,0.80,Cut)
 	THILABL.DrawLatex(0.71,0.91,"#bf{12.7 fb^{-1}}, #bf{s = #sqrt{13} TeV}")
 	
-	C.SaveAs(outputs/varname+"_Cut_"+Cut[-20:].replace("<", "").replace(">", "").replace(".", "").replace("&", "_")+".png")
+	C.SaveAs("outputs/"+varname+"_Cut_"+Cut[-20:].replace("<", "").replace(">", "").replace(".", "").replace("&", "_")+".png")
 
 #  "LepTightness<1.&LepPt>50.&lepJetPt>100.&METPt>50.&TAGPt>350&lepJetCSV<0.46"
 
 
-clist = ["LepTightness<1","LepPt>50", "lepJetPt>100", "METPt>50", "TAGPt>200", "lepJetCSV<0.46" ]
-clist = ["LepTightness>2.9"]
+clist = ["LepTightness<1","LepPt>50", "lepJetPt>100", "METPt>50", "TAGPt>200", "lepJetCSV<0.46"]
+
+clist = ["LepMiniIso<0.1", "LepTightness>2.9","LepPt>50", "lepJetPt>100", "METPt>50", "TAGPt>400"]
+
 cuts = []
 for i in range(1,len(clist)+1):
 	c = ""
@@ -157,11 +165,11 @@ for i in range(1,len(clist)+1):
 	cuts.append(c)
 	print c
 
-for cut in cuts:
+for cut in cuts[len(cuts)-1:len(cuts)]:
 	#for varname, xmin, xmax in zip(["LepPt","METPt", "TAGPt", "TPRIMEM", "WPt", "lepJetPt","ZPRIMEM"],[50,0,0,0,0,0,200],[500,900,1400,1800,1200,1000,3000]):
 		#varplot(varname, xmin, xmax, cut =cut)
 	for varname in options.vars:
-		varplot(varname, 0, 500, pwd=options.pwd,cut =cut, stacked=options.stack, normed=options.norm)
+		varplot(varname, pwd=options.pwd,cut =cut, stacked=options.stack, normed=options.norm)
 
 
 
